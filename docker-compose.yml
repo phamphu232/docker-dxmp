@@ -1,0 +1,62 @@
+version: '3.7'
+
+networks:
+  net1:
+    driver: bridge
+
+services:
+  apache2:
+    # image: docker.io/httpd:2.4.59-alpine3.20
+    build:
+      context: .
+      dockerfile: ./apache2/Dockerfile
+      args:
+        UID: ${UID:-1000}
+        GID: ${UID:-1000}
+    container_name: apache2
+    networks:
+      - net1
+    ports:
+      - '${APACHE_PORT:-8080}:80'
+      - '${APACHE_PORT_SECURE:-8443}:443'
+    volumes:
+      ## Setting timezone(linux only)
+      - /etc/localtime:/etc/localtime:ro
+      - ./apache2/conf:/usr/local/apache2/conf
+      - ./apache2/logs:/usr/local/apache2/logs
+      - ./htdocs:/usr/local/apache2/htdocs
+    working_dir: /usr/local/apache2/htdocs
+    user: '${UID:-1000}:${GID:-1000}'
+    environment:
+      UID: '${UID:-1000}'
+      GID: '${GID:-1000}'
+    restart: unless-stopped
+
+  php8.2:
+    # image: docker.io/phamphu232/php:8.2.20-fpm-alpine3.20
+    build:
+      context: .
+      dockerfile: ./php8.2/Dockerfile
+      args:
+        UID: ${UID:-1000}
+        GID: ${UID:-1000}
+    container_name: php8.2
+    networks:
+      - net1
+    expose:
+      - '9000'
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
+    volumes:
+      ## Setting timezone(linux only)
+      - /etc/localtime:/etc/localtime:ro
+      - ./php8.2/php/php.ini:/usr/local/etc/php/php.ini
+      - ./php8.2/php-fpm.d:/usr/local/etc/php-fpm.d
+      - ./htdocs:/usr/local/apache2/htdocs
+    working_dir: /usr/local/apache2/htdocs
+    environment:
+      UID: '${UID:-1000}'
+      GID: '${GID:-1000}'
+    ## command: ["tail", "-f", "/dev/null"]
+    # command: /entrypoint
+    restart: unless-stopped
